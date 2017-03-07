@@ -2,12 +2,16 @@
 # sc_coord, sc_object and sc_path
 
 ## we need PRIMITIVE to be able to build from those inputs like
-## rgl models
+## rgl models, rbgm, igraph, TopoJSON, maps
 
 library(rangl)
 data("minimal_mesh", package = "scsf")
 x <- plot(rangl(minimal_mesh))
 r <- plot(rangl(raster(matrix(1:12, 3))))
+library(rbgm)
+bgm <- bgmfile(bgmfiles::bgmfiles()[3])
+class(bgm) <- "bgm"  ## pretend we did this
+
 
 ## any of these might return NULL
 sc_quad(r)
@@ -24,6 +28,8 @@ sc_object(x)
 sc_vertex(r)
 sc_vertex(x)
 
+
+sc_ver
 sc_vertex_index <- function(x, ...) {
   tx <- tibble::as_tibble(t(x))
   dplyr::mutate(setNames(tx, paste0(".vertex", seq_len(ncol(tx)) - 1L)), object_ = sc::sc_rand(1L))
@@ -34,18 +40,39 @@ sc_quad <- function(x, ...) {
   sc_vertex_index(x$ib, ...)
 }
 sc_triangle <- function(x, ...) {
+ UseMethod("sc_triangle")
+}
+sc_triangle.bgm <- function(x, ...) {
+  NULL
+}
+sc_triangle.mesh3d <- function(x, ...) {
   if (is.null(x[["it"]])) return(NULL)
   sc_vertex_index(x$it, ...)
 }
+
 #sc_segment ## there's no mesh type for segments?
 ## the material properties
-sc_object <- function(x, ...) {
+sc_object.mesh3d <- function(x, ...) {
   tibble::tibble(object_ = 1)
 }
+sc_object.bgm <- function(x, ...) {
+  rename(x[["boxes"]], .object_ = .bx0)
+}
 
+#' Return the unique vertices, with ID. (sc_coord returns all instances, with no ID)
 sc_vertex <- function(x, ...) {
+  UseMethod("sc_vertex")
+}
+sc_vertex.mesh3d <- function(x, ...) {
   dplyr::mutate(stats::setNames(tibble::as_tibble(t(x$vb)), c("X", "Y", "Z", "W")))
 }
+sc_vertex.bgm <- function(x, ...) {
+  dplyr::rename(x[["vertices"]], .vertex_ = .vx0)
+}
+
+
+
+
 PRIMITIVE.oneday.default <- function(x, ...) {
   ## get the main stuff
   library(tibble)
